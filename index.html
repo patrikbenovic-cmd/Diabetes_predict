@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Univerzálny predikčný systém</title>
+<style>
+  :root {
+    --bg: #0f172a; --bg-card: #1e293b; --border: #334155;
+    --primary: #3b82f6; --primary-hover: #2563eb;
+    --success: #10b981; --danger: #ef4444;
+    --text: #e2e8f0; --muted: #94a3b8; --input-bg: #0b1220;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; padding: 24px 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: var(--text);
+  }
+  .container { max-width: 1180px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 32px; }
+  header h1 {
+    font-size: 2rem; margin: 0 0 8px;
+    background: linear-gradient(90deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header p { color: var(--muted); margin: 0; }
+
+  .model-picker {
+    max-width: 560px; margin: 0 auto 24px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .model-picker label { color: var(--muted); font-size: .85rem; text-align: center; }
+  .model-picker select {
+    padding: 12px 14px; border-radius: 10px;
+    background: var(--input-bg); color: var(--text);
+    border: 1px solid var(--border); font-size: 1rem;
+    outline: none;
+  }
+  .model-picker select:focus { border-color: var(--primary); }
+
+  .layout {
+    display: grid; grid-template-columns: 2fr 1fr;
+    gap: 24px; align-items: start;
+  }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  .card + .card { margin-top: 24px; }
+  .card h2 {
+    margin: 0 0 8px; font-size: 1.15rem; color: #f1f5f9;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card h2::before {
+    content: ""; width: 4px; height: 18px;
+    background: var(--primary); border-radius: 2px;
+  }
+  .card .desc { color: var(--muted); font-size: .88rem; margin: 0 0 12px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+
+  .field label {
+    display: block; font-size: .82rem; color: var(--muted);
+    margin-bottom: 6px; font-weight: 500;
+  }
+  .field input, .field select {
+    width: 100%; padding: 10px 12px; font-size: .95rem;
+    background: var(--input-bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    outline: none; transition: border .15s ease;
+  }
+  .field input:focus, .field select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+  }
+
+  .actions { margin-top: 24px; display: flex; gap: 12px; }
+  button {
+    padding: 12px 20px; border: none; border-radius: 10px;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: all .15s ease;
+  }
+  button.primary { flex: 1; background: var(--primary); color: #fff; }
+  button.primary:hover:not(:disabled) {
+    background: var(--primary-hover); transform: translateY(-1px);
+  }
+  button.primary:disabled { opacity: .6; cursor: not-allowed; }
+  button.secondary {
+    flex: 0 0 auto; background: transparent; color: var(--muted);
+    border: 1px solid var(--border); padding: 12px 18px;
+  }
+  button.secondary:hover { color: var(--text); border-color: var(--muted); }
+
+  #result-card { display: none; }
+  #result-card.visible { display: block; animation: fadeIn .3s ease; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-badge {
+    padding: 16px; border-radius: 12px; text-align: center;
+    font-size: 1.15rem; font-weight: 600; margin-bottom: 20px;
+  }
+  .result-badge.positive {
+    background: rgba(239,68,68,.12);
+    border: 1px solid rgba(239,68,68,.4); color: #fca5a5;
+  }
+  .result-badge.negative {
+    background: rgba(16,185,129,.12);
+    border: 1px solid rgba(16,185,129,.4); color: #6ee7b7;
+  }
+  .result-badge.neutral {
+    background: rgba(59,130,246,.12);
+    border: 1px solid rgba(59,130,246,.4); color: #93c5fd;
+  }
+
+  .confidence-row {
+    display: flex; justify-content: space-between;
+    font-size: .9rem; color: var(--muted); margin-bottom: 8px;
+  }
+  .progress {
+    height: 10px; background: var(--input-bg);
+    border-radius: 5px; overflow: hidden; margin-bottom: 20px;
+  }
+  .progress > div {
+    height: 100%; width: 0;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    transition: width .6s ease;
+  }
+
+  .prob-list { list-style: none; padding: 0; margin: 0; }
+  .prob-list li {
+    display: flex; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    font-size: .9rem;
+  }
+  .prob-list li:last-child { border-bottom: none; }
+
+  .info-list {
+    list-style: none; padding: 0; margin: 12px 0 0;
+    font-size: .9rem; color: var(--muted);
+  }
+  .info-list li {
+    display: flex; justify-content: space-between;
+    padding: 6px 0; border-bottom: 1px dashed var(--border);
+  }
+  .info-list li span:last-child { color: var(--text); font-weight: 600; }
+
+  .error {
+    background: rgba(239,68,68,.12);
+    border: 1px solid rgba(239,68,68,.4); color: #fca5a5;
+    padding: 12px; border-radius: 10px; font-size: .9rem;
+    margin-top: 16px; display: none;
+  }
+  .error.visible { display: block; }
+
+  .status {
+    font-size: .8rem; text-align: center; color: var(--muted); margin-top: 16px;
+  }
+  .status .dot {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; background: #64748b;
+    margin-right: 6px; vertical-align: middle;
+  }
+  .status.ok .dot { background: var(--success); }
+  .status.err .dot { background: var(--danger); }
+
+  .loading { text-align: center; color: var(--muted); padding: 40px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Univerzálny predikčný systém</h1>
+    <p>Vyberte model, zadajte parametre a spustite predikciu.</p>
+  </header>
+
+  <div class="model-picker" id="model-picker" style="display:none;">
+    <label for="model-select">Vyberte model</label>
+    <select id="model-select"></select>
+  </div>
+
+  <div class="loading" id="loading">Načítavam modely…</div>
+
+  <div class="layout" id="layout" style="display:none;">
+    <div class="card">
+      <h2 id="form-title">Vstupné parametre</h2>
+      <p class="desc" id="form-desc"></p>
+      <form id="predict-form">
+        <div class="grid" id="form-grid"></div>
+        <div class="actions">
+          <button type="submit" class="primary" id="submit-btn">Vypočítať predikciu</button>
+          <button type="button" class="secondary" id="reset-btn">Reset</button>
+        </div>
+        <div class="error" id="error-box"></div>
+      </form>
+    </div>
+
+    <div>
+      <div class="card" id="result-card">
+        <h2>Výsledok predikcie</h2>
+        <div class="result-badge" id="result-badge"></div>
+
+        <div class="confidence-row">
+          <span>Miera spoľahlivosti</span>
+          <span id="confidence-text">–</span>
+        </div>
+        <div class="progress"><div id="confidence-bar"></div></div>
+
+        <h2 style="font-size:1rem;">Rozloženie pravdepodobností</h2>
+        <ul class="prob-list" id="prob-list"></ul>
+      </div>
+
+      <div class="card">
+        <h2>O modeli</h2>
+        <ul class="info-list" id="info-list"></ul>
+        <p class="desc" id="info-note" style="margin-top:12px;"></p>
+      </div>
+
+      <div class="status" id="status">
+        <span class="dot"></span><span id="status-text">Pripájam sa…</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const API = "";
+
+  let MODELS = [];
+  let CURRENT = null;
+
+  async function loadModels() {
+    try {
+      const res = await fetch(`${API}/api/models`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      MODELS = data.models;
+
+      if (!MODELS.length) {
+        $("loading").textContent = "Žiadne modely nie sú zaregistrované.";
+        return;
+      }
+
+      const sel = $("model-select");
+      sel.innerHTML = "";
+      MODELS.forEach(m => {
+        const o = document.createElement("option");
+        o.value = m.id;
+        o.textContent = m.name;
+        sel.appendChild(o);
+      });
+
+      if (MODELS.length > 1) $("model-picker").style.display = "flex";
+      $("loading").style.display = "none";
+      $("layout").style.display = "grid";
+
+      $("status").classList.add("ok");
+      $("status").classList.remove("err");
+      $("status-text").textContent = "Server pripravený";
+
+      sel.addEventListener("change", e => selectModel(e.target.value));
+      selectModel(MODELS[0].id);
+
+    } catch (err) {
+      $("loading").textContent = "Server nedostupný.";
+      $("status").classList.add("err");
+      $("status").classList.remove("ok");
+      $("status-text").textContent = "Server nedostupný – spustite server.py";
+    }
+  }
+
+  function selectModel(id) {
+    CURRENT = MODELS.find(m => m.id === id);
+    if (!CURRENT) return;
+
+    $("form-title").textContent = CURRENT.name;
+    $("form-desc").textContent = CURRENT.description || "";
+    renderForm(CURRENT.fields);
+    renderInfo(CURRENT);
+
+    $("result-card").classList.remove("visible");
+    $("error-box").classList.remove("visible");
+  }
+
+  function renderForm(fields) {
+    const grid = $("form-grid");
+    grid.innerHTML = "";
+
+    fields.forEach(f => {
+      const div = document.createElement("div");
+      div.className = "field";
+
+      const lbl = document.createElement("label");
+      lbl.htmlFor = f.name;
+      lbl.textContent = f.label || f.name;
+      div.appendChild(lbl);
+
+      let input;
+      if (f.type === "categorical") {
+        input = document.createElement("select");
+        (f.options || []).forEach(opt => {
+          const o = document.createElement("option");
+          o.value = opt;
+          o.textContent = (f.option_labels && f.option_labels[opt]) || opt;
+          if (String(f.default) === String(opt)) o.selected = true;
+          input.appendChild(o);
+        });
+      } else if (f.type === "number") {
+        input = document.createElement("input");
+        input.type = "number";
+        input.step = f.step ?? "any";
+        input.value = f.default ?? 0;
+      } else {
+        input = document.createElement("input");
+        input.type = "text";
+        input.value = f.default ?? "";
+      }
+      input.id = f.name;
+      input.name = f.name;
+
+      div.appendChild(input);
+      grid.appendChild(div);
+    });
+
+    if (fields.length % 2 === 1 && grid.lastChild) {
+      grid.lastChild.style.gridColumn = "1 / -1";
+    }
+  }
+
+  function renderInfo(model) {
+    const ul = $("info-list");
+    ul.innerHTML = "";
+    const rows = [
+      ["Typ modelu", model.kind],
+      ...Object.entries(model.metrics || {}),
+    ];
+    rows.forEach(([k, v]) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${k}</span><span>${v}</span>`;
+      ul.appendChild(li);
+    });
+    $("info-note").textContent = model.metrics_note || "";
+  }
+
+  $("reset-btn").addEventListener("click", () => {
+    if (CURRENT) renderForm(CURRENT.fields);
+    $("result-card").classList.remove("visible");
+    $("error-box").classList.remove("visible");
+  });
+
+  $("predict-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!CURRENT) return;
+
+    $("error-box").classList.remove("visible");
+    $("submit-btn").disabled = true;
+    $("submit-btn").textContent = "Počítam…";
+
+    try {
+      const payload = {};
+      CURRENT.fields.forEach(f => {
+        const el = document.getElementById(f.name);
+        payload[f.name] = el ? el.value : "";
+      });
+
+      const res = await fetch(`${API}/api/predict/${CURRENT.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+      showResult(data);
+
+    } catch (err) {
+      $("error-box").textContent = "Chyba: " + err.message;
+      $("error-box").classList.add("visible");
+    } finally {
+      $("submit-btn").disabled = false;
+      $("submit-btn").textContent = "Vypočítať predikciu";
+    }
+  });
+
+  function showResult(data) {
+    const badge = $("result-badge");
+    badge.textContent = data.result;
+
+    let cls = "neutral";
+    if (data.task === "classification") {
+      cls = data.is_positive ? "positive" : "negative";
+    }
+    badge.className = "result-badge " + cls;
+
+    const pct = (data.confidence * 100).toFixed(2);
+    $("confidence-text").textContent = pct + " %";
+    $("confidence-bar").style.width = pct + "%";
+
+    const list = $("prob-list");
+    list.innerHTML = "";
+    (data.probabilities || []).forEach(p => {
+      const li = document.createElement("li");
+      li.innerHTML =
+        `<span>${p.label}</span><span>${(p.probability * 100).toFixed(2)} %</span>`;
+      list.appendChild(li);
+    });
+
+    $("result-card").classList.add("visible");
+    $("result-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  loadModels();
+})();
+</script>
+</body>
+</html>

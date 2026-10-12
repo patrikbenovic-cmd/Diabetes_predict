@@ -1,603 +1,456 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Generátor QR kódov – offline + farby</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600;14..32,700&display=swap" rel="stylesheet" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Univerzálny predikčný systém</title>
+<style>
+  :root {
+    --bg: #0f172a; --bg-card: #1e293b; --border: #334155;
+    --primary: #3b82f6; --primary-hover: #2563eb;
+    --success: #10b981; --danger: #ef4444;
+    --text: #e2e8f0; --muted: #94a3b8; --input-bg: #0b1220;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; padding: 24px 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: var(--text);
+    display: flex; flex-direction: column;
+  }
+  .container { max-width: 1180px; margin: 0 auto; width: 100%; flex: 1; }
+  header { text-align: center; margin-bottom: 32px; }
+  header h1 {
+    font-size: 2rem; margin: 0 0 8px;
+    background: linear-gradient(90deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header p { color: var(--muted); margin: 0; }
 
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(145deg, #f6f9fc 0%, #e6f0f5 100%);
-            padding: 1.5rem;
-        }
+  .model-picker {
+    max-width: 560px; margin: 0 auto 24px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .model-picker label { color: var(--muted); font-size: .85rem; text-align: center; }
+  .model-picker select {
+    padding: 12px 14px; border-radius: 10px;
+    background: var(--input-bg); color: var(--text);
+    border: 1px solid var(--border); font-size: 1rem;
+    outline: none;
+  }
+  .model-picker select:focus { border-color: var(--primary); }
 
-        .card {
-            background: #ffffff;
-            max-width: 560px;
-            width: 100%;
-            padding: 2.5rem 2rem 2rem;
-            border-radius: 2rem;
-            box-shadow: 0 20px 40px -12px rgba(0, 20, 30, 0.25),
-                0 8px 24px -6px rgba(0, 0, 0, 0.08);
-            transition: transform 0.2s ease;
-            text-align: center;
-        }
+  .layout {
+    display: grid; grid-template-columns: 2fr 1fr;
+    gap: 24px; align-items: start;
+  }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
-        .card:hover {
-            transform: translateY(-2px);
-        }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  .card + .card { margin-top: 24px; }
+  .card h2 {
+    margin: 0 0 8px; font-size: 1.15rem; color: #f1f5f9;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card h2::before {
+    content: ""; width: 4px; height: 18px;
+    background: var(--primary); border-radius: 2px;
+  }
+  .card .desc { color: var(--muted); font-size: .88rem; margin: 0 0 12px; }
 
-        h1 {
-            font-size: 1.9rem;
-            font-weight: 700;
-            color: #0b2b3d;
-            letter-spacing: -0.02em;
-            margin-bottom: 0.25rem;
-        }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
 
-        .subtitle {
-            font-size: 0.95rem;
-            color: #4b6a7c;
-            margin-bottom: 2rem;
-            font-weight: 400;
-            border-bottom: 2px solid #eef5f9;
-            padding-bottom: 1.25rem;
-        }
+  .field label {
+    display: block; font-size: .82rem; color: var(--muted);
+    margin-bottom: 6px; font-weight: 500;
+  }
+  .field input, .field select {
+    width: 100%; padding: 10px 12px; font-size: .95rem;
+    background: var(--input-bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    outline: none; transition: border .15s ease;
+  }
+  .field input:focus, .field select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+  }
 
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-        }
+  .actions { margin-top: 24px; display: flex; gap: 12px; }
+  button {
+    padding: 12px 20px; border: none; border-radius: 10px;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: all .15s ease;
+  }
+  button.primary { flex: 1; background: var(--primary); color: #fff; }
+  button.primary:hover:not(:disabled) {
+    background: var(--primary-hover); transform: translateY(-1px);
+  }
+  button.primary:disabled { opacity: .6; cursor: not-allowed; }
+  button.secondary {
+    flex: 0 0 auto; background: transparent; color: var(--muted);
+    border: 1px solid var(--border); padding: 12px 18px;
+  }
+  button.secondary:hover { color: var(--text); border-color: var(--muted); }
 
-        .input-group label {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: #1d3b4d;
-            text-align: left;
-        }
+  #result-card { display: none; }
+  #result-card.visible { display: block; animation: fadeIn .3s ease; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
-        .input-group textarea {
-            font-family: 'Inter', system-ui, sans-serif;
-            font-size: 1rem;
-            padding: 0.9rem 1.2rem;
-            border: 2px solid #dce8ef;
-            border-radius: 1.2rem;
-            resize: vertical;
-            min-height: 100px;
-            max-height: 200px;
-            background: #fafdff;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            color: #0b2b3d;
-            line-height: 1.5;
-        }
+  .result-badge {
+    padding: 16px; border-radius: 12px; text-align: center;
+    font-size: 1.15rem; font-weight: 600; margin-bottom: 20px;
+  }
+  .result-badge.positive {
+    background: rgba(239,68,68,.12);
+    border: 1px solid rgba(239,68,68,.4); color: #fca5a5;
+  }
+  .result-badge.negative {
+    background: rgba(16,185,129,.12);
+    border: 1px solid rgba(16,185,129,.4); color: #6ee7b7;
+  }
+  .result-badge.neutral {
+    background: rgba(59,130,246,.12);
+    border: 1px solid rgba(59,130,246,.4); color: #93c5fd;
+  }
 
-        .input-group textarea:focus {
-            outline: none;
-            border-color: #2a7faa;
-            box-shadow: 0 0 0 4px rgba(42, 127, 170, 0.15);
-        }
+  .confidence-row {
+    display: flex; justify-content: space-between;
+    font-size: .9rem; color: var(--muted); margin-bottom: 8px;
+  }
+  .progress {
+    height: 10px; background: var(--input-bg);
+    border-radius: 5px; overflow: hidden; margin-bottom: 20px;
+  }
+  .progress > div {
+    height: 100%; width: 0;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    transition: width .6s ease;
+  }
 
-        .input-group textarea::placeholder {
-            color: #a0bccd;
-        }
+  .prob-list { list-style: none; padding: 0; margin: 0; }
+  .prob-list li {
+    display: flex; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    font-size: .9rem;
+  }
+  .prob-list li:last-child { border-bottom: none; }
 
-        .color-row {
-            display: flex;
-            gap: 1.5rem;
-            justify-content: center;
-            align-items: center;
-            margin: 0 0 1.2rem 0;
-            flex-wrap: wrap;
-        }
+  .info-list {
+    list-style: none; padding: 0; margin: 12px 0 0;
+    font-size: .9rem; color: var(--muted);
+  }
+  .info-list li {
+    display: flex; justify-content: space-between;
+    padding: 6px 0; border-bottom: 1px dashed var(--border);
+  }
+  .info-list li span:last-child { color: var(--text); font-weight: 600; }
 
-        .color-item {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #1d3b4d;
-        }
+  .error {
+    background: rgba(239,68,68,.12);
+    border: 1px solid rgba(239,68,68,.4); color: #fca5a5;
+    padding: 12px; border-radius: 10px; font-size: .9rem;
+    margin-top: 16px; display: none;
+  }
+  .error.visible { display: block; }
 
-        .color-item input[type="color"] {
-            width: 44px;
-            height: 44px;
-            padding: 2px;
-            border: 2px solid #dce8ef;
-            border-radius: 1rem;
-            cursor: pointer;
-            background: white;
-        }
+  .status {
+    font-size: .8rem; text-align: center; color: var(--muted); margin-top: 16px;
+  }
+  .status .dot {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; background: #64748b;
+    margin-right: 6px; vertical-align: middle;
+  }
+  .status.ok .dot { background: var(--success); }
+  .status.err .dot { background: var(--danger); }
 
-        .color-item input[type="color"]::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
+  .loading { text-align: center; color: var(--muted); padding: 40px 0; }
 
-        .color-item input[type="color"]::-webkit-color-swatch {
-            border: none;
-            border-radius: 0.8rem;
-        }
-
-        .btn-reset-colors {
-            background: transparent;
-            border: 1px solid #dce8ef;
-            border-radius: 2rem;
-            padding: 0.4rem 1rem;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: #4b6a7c;
-            cursor: pointer;
-            transition: 0.2s;
-            white-space: nowrap;
-        }
-
-        .btn-reset-colors:hover {
-            background: #eef5f9;
-            border-color: #b0ccdc;
-        }
-
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            justify-content: center;
-            margin-bottom: 2rem;
-        }
-
-        .btn {
-            font-family: 'Inter', system-ui, sans-serif;
-            font-weight: 600;
-            font-size: 1rem;
-            padding: 0.75rem 2rem;
-            border: none;
-            border-radius: 3rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            flex: 1 1 auto;
-            min-width: 140px;
-        }
-
-        .btn-primary {
-            background: #1a5f7a;
-            color: #fff;
-            box-shadow: 0 8px 18px -6px rgba(26, 95, 122, 0.35);
-        }
-
-        .btn-primary:hover {
-            background: #0f4a62;
-            transform: scale(1.02);
-        }
-
-        .btn-primary:active {
-            transform: scale(0.97);
-        }
-
-        .btn-secondary {
-            background: #e8f1f7;
-            color: #1a5f7a;
-        }
-
-        .btn-secondary:hover {
-            background: #d4e3ed;
-            transform: scale(1.02);
-        }
-
-        .btn-secondary:active {
-            transform: scale(0.97);
-        }
-
-        .btn-download {
-            background: #2c8c5e;
-            color: #fff;
-            box-shadow: 0 8px 18px -6px rgba(44, 140, 94, 0.35);
-            display: none;
-        }
-
-        .btn-download:hover {
-            background: #1f724b;
-            transform: scale(1.02);
-        }
-
-        .btn-download:active {
-            transform: scale(0.97);
-        }
-
-        .qr-wrapper {
-            background: #fafdff;
-            border-radius: 1.5rem;
-            padding: 1.5rem;
-            border: 2px dashed #dce8ef;
-            transition: border-color 0.3s;
-            min-height: 200px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .qr-wrapper.has-qr {
-            border-color: #2a7faa;
-            border-style: solid;
-        }
-
-        #qrcode {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        #qrcode canvas,
-        #qrcode img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 0.75rem;
-        }
-
-        .qr-placeholder {
-            color: #a0bccd;
-            font-size: 0.95rem;
-            font-weight: 400;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .qr-placeholder svg {
-            opacity: 0.5;
-            margin-bottom: 0.25rem;
-        }
-
-        .info-msg {
-            margin-top: 0.75rem;
-            font-size: 0.85rem;
-            color: #4b6a7c;
-            min-height: 1.5rem;
-        }
-
-        .info-msg.error {
-            color: #c73b3b;
-            font-weight: 500;
-        }
-
-        /* ---------- Podpis autora ---------- */
-        .signature {
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid #eef5f9;
-            font-size: 0.8rem;
-            color: #7a94a3;
-            text-align: center;
-            line-height: 1.6;
-            font-weight: 400;
-        }
-
-        .signature strong {
-            color: #1d3b4d;
-            font-weight: 600;
-        }
-
-        .signature a {
-            color: #2a7faa;
-            text-decoration: none;
-            transition: color 0.15s ease;
-        }
-
-        .signature a:hover {
-            color: #1a5f7a;
-            text-decoration: underline;
-        }
-
-        @media (max-width: 500px) {
-            .card {
-                padding: 1.75rem 1.25rem;
-            }
-            h1 {
-                font-size: 1.5rem;
-            }
-            .btn {
-                font-size: 0.9rem;
-                padding: 0.65rem 1.5rem;
-                min-width: 120px;
-                flex: 1 1 100%;
-            }
-            .actions {
-                flex-direction: column;
-            }
-            .input-group textarea {
-                min-height: 80px;
-            }
-            .color-row {
-                gap: 0.75rem;
-                justify-content: space-between;
-            }
-            .color-item {
-                font-size: 0.8rem;
-            }
-            .color-item input[type="color"] {
-                width: 38px;
-                height: 38px;
-            }
-        }
-
-        @media (max-width: 380px) {
-            .card {
-                padding: 1.25rem 0.75rem;
-            }
-            #qrcode canvas {
-                width: 180px !important;
-                height: 180px !important;
-            }
-        }
-    </style>
+  /* ---------- Podpis autora ---------- */
+  .signature {
+    text-align: center;
+    margin: 40px auto 8px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: .85rem;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 1180px;
+    width: 100%;
+  }
+  .signature strong { color: var(--text); font-weight: 600; }
+  .signature a {
+    color: #60a5fa;
+    text-decoration: none;
+    transition: color .15s ease;
+  }
+  .signature a:hover { color: #93c5fd; text-decoration: underline; }
+</style>
 </head>
 <body>
+<div class="container">
+  <header>
+    <h1>Univerzálny predikčný systém</h1>
+    <p>Vyberte model, zadajte parametre a spustite predikciu.</p>
+  </header>
 
+  <div class="model-picker" id="model-picker" style="display:none;">
+    <label for="model-select">Vyberte model</label>
+    <select id="model-select"></select>
+  </div>
+
+  <div class="loading" id="loading">Načítavam modely…</div>
+
+  <div class="layout" id="layout" style="display:none;">
     <div class="card">
-        <h1>🎨 Generátor QR</h1>
-        <p class="subtitle">Vlož text, zvoľ farby a vytvor QR kód</p>
-
-        <!-- Vstupný text -->
-        <div class="input-group">
-            <label for="textInput">Text alebo URL</label>
-            <textarea id="textInput" placeholder="Napríklad: https://www.example.com alebo ľubovoľný text..." rows="3"></textarea>
-        </div>
-
-        <!-- Farbičky -->
-        <div class="color-row">
-            <div class="color-item">
-                <label for="darkColor">Tmavá</label>
-                <input type="color" id="darkColor" value="#0b2b3d" />
-            </div>
-            <div class="color-item">
-                <label for="lightColor">Svetlá</label>
-                <input type="color" id="lightColor" value="#ffffff" />
-            </div>
-            <button class="btn-reset-colors" id="resetColorsBtn">↺ Predvolené</button>
-        </div>
-
-        <!-- Tlačidlá -->
+      <h2 id="form-title">Vstupné parametre</h2>
+      <p class="desc" id="form-desc"></p>
+      <form id="predict-form">
+        <div class="grid" id="form-grid"></div>
         <div class="actions">
-            <button class="btn btn-primary" id="generateBtn">✨ Generovať</button>
-            <button class="btn btn-secondary" id="clearBtn">🗑️ Vymazať</button>
-            <button class="btn btn-download" id="downloadBtn">⬇️ Stiahnuť PNG</button>
+          <button type="submit" class="primary" id="submit-btn">Vypočítať predikciu</button>
+          <button type="button" class="secondary" id="reset-btn">Reset</button>
         </div>
-
-        <!-- QR kód -->
-        <div class="qr-wrapper" id="qrWrapper">
-            <div id="qrcode">
-                <div class="qr-placeholder">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#b0ccdc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="6" height="6" rx="1" />
-                        <rect x="15" y="3" width="6" height="6" rx="1" />
-                        <rect x="3" y="15" width="6" height="6" rx="1" />
-                        <rect x="15" y="15" width="6" height="6" rx="1" />
-                        <line x1="9" y1="6" x2="15" y2="6" />
-                        <line x1="6" y1="9" x2="6" y2="15" />
-                        <line x1="18" y1="9" x2="18" y2="15" />
-                        <line x1="9" y1="18" x2="15" y2="18" />
-                    </svg>
-                    <span>Tu sa zobrazí QR kód</span>
-                </div>
-            </div>
-            <div class="info-msg" id="infoMsg">&nbsp;</div>
-        </div>
-
-        <!-- ---------- Podpis autora ---------- -->
-        <div class="signature">
-            Vytvoril <strong>Mgr. Patrik Beňovič, PhD.</strong><br />
-            <a href="mailto:patrik.benovic@tnuni.sk">patrik.benovic@tnuni.sk</a><br />
-            <span>12. 10. 2026</span>
-        </div>
+        <div class="error" id="error-box"></div>
+      </form>
     </div>
 
-    <!-- ===== Knižnica QRCode.js ===== -->
-    <script src="qrcode.min.js"></script>
+    <div>
+      <div class="card" id="result-card">
+        <h2>Výsledok predikcie</h2>
+        <div class="result-badge" id="result-badge"></div>
 
-    <!-- ===== Aplikačný kód ===== -->
-    <script>
-        (function() {
-            'use strict';
+        <div class="confidence-row">
+          <span>Miera spoľahlivosti</span>
+          <span id="confidence-text">–</span>
+        </div>
+        <div class="progress"><div id="confidence-bar"></div></div>
 
-            const textInput = document.getElementById('textInput');
-            const darkColorInput = document.getElementById('darkColor');
-            const lightColorInput = document.getElementById('lightColor');
-            const resetColorsBtn = document.getElementById('resetColorsBtn');
-            const generateBtn = document.getElementById('generateBtn');
-            const clearBtn = document.getElementById('clearBtn');
-            const downloadBtn = document.getElementById('downloadBtn');
-            const qrContainer = document.getElementById('qrcode');
-            const qrWrapper = document.getElementById('qrWrapper');
-            const infoMsg = document.getElementById('infoMsg');
+        <h2 style="font-size:1rem;">Rozloženie pravdepodobností</h2>
+        <ul class="prob-list" id="prob-list"></ul>
+      </div>
 
-            let qrCodeInstance = null;
-            let currentText = '';
+      <div class="card">
+        <h2>O modeli</h2>
+        <ul class="info-list" id="info-list"></ul>
+        <p class="desc" id="info-note" style="margin-top:12px;"></p>
+      </div>
 
-            function setInfo(text, isError = false) {
-                infoMsg.textContent = text;
-                infoMsg.className = 'info-msg' + (isError ? ' error' : '');
-            }
+      <div class="status" id="status">
+        <span class="dot"></span><span id="status-text">Pripájam sa…</span>
+      </div>
+    </div>
+  </div>
+</div>
 
-            function getColors() {
-                return {
-                    dark: darkColorInput.value,
-                    light: lightColorInput.value
-                };
-            }
+<!-- ---------- Podpis autora ---------- -->
+<div class="signature">
+  Vytvoril <strong>Mgr. Patrik Beňovič, PhD.</strong><br />
+  <a href="mailto:patrik.benovic@tnuni.sk">patrik.benovic@tnuni.sk</a><br />
+  <span>12. 10. 2026</span>
+</div>
 
-            function saveColors(dark, light) {
-                try {
-                    localStorage.setItem('qr_darkColor', dark);
-                    localStorage.setItem('qr_lightColor', light);
-                } catch (_) { }
-            }
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const API = "";
 
-            function loadColors() {
-                let dark = localStorage.getItem('qr_darkColor');
-                let light = localStorage.getItem('qr_lightColor');
-                if (dark) darkColorInput.value = dark;
-                if (light) lightColorInput.value = light;
-            }
+  let MODELS = [];
+  let CURRENT = null;
 
-            function setDefaultColors() {
-                darkColorInput.value = '#0b2b3d';
-                lightColorInput.value = '#ffffff';
-                saveColors('#0b2b3d', '#ffffff');
-                if (currentText) {
-                    generateQR(currentText);
-                } else {
-                    clearQR();
-                }
-            }
+  async function loadModels() {
+    try {
+      const res = await fetch(`${API}/api/models`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      MODELS = data.models;
 
-            function clearQR() {
-                qrContainer.innerHTML = `
-                    <div class="qr-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#b0ccdc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="6" height="6" rx="1" />
-                            <rect x="15" y="3" width="6" height="6" rx="1" />
-                            <rect x="3" y="15" width="6" height="6" rx="1" />
-                            <rect x="15" y="15" width="6" height="6" rx="1" />
-                            <line x1="9" y1="6" x2="15" y2="6" />
-                            <line x1="6" y1="9" x2="6" y2="15" />
-                            <line x1="18" y1="9" x2="18" y2="15" />
-                            <line x1="9" y1="18" x2="15" y2="18" />
-                        </svg>
-                        <span>Tu sa zobrazí QR kód</span>
-                    </div>
-                `;
-                qrWrapper.classList.remove('has-qr');
-                downloadBtn.style.display = 'none';
-                setInfo('', false);
-                qrCodeInstance = null;
-                currentText = '';
-            }
+      if (!MODELS.length) {
+        $("loading").textContent = "Žiadne modely nie sú zaregistrované.";
+        return;
+      }
 
-            function generateQR(text) {
-                const finalText = (text !== undefined) ? text : textInput.value.trim();
-                if (finalText === '') {
-                    setInfo('⚠️ Prosím, zadajte text alebo URL.', true);
-                    textInput.focus();
-                    return;
-                }
+      const sel = $("model-select");
+      sel.innerHTML = "";
+      MODELS.forEach(m => {
+        const o = document.createElement("option");
+        o.value = m.id;
+        o.textContent = m.name;
+        sel.appendChild(o);
+      });
 
-                qrContainer.innerHTML = '';
+      if (MODELS.length > 1) $("model-picker").style.display = "flex";
+      $("loading").style.display = "none";
+      $("layout").style.display = "grid";
 
-                const colors = getColors();
-                try {
-                    qrCodeInstance = new QRCode(qrContainer, {
-                        text: finalText,
-                        width: 256,
-                        height: 256,
-                        colorDark: colors.dark,
-                        colorLight: colors.light,
-                        correctLevel: QRCode.CorrectLevel.H
-                    });
+      $("status").classList.add("ok");
+      $("status").classList.remove("err");
+      $("status-text").textContent = "Server pripravený";
 
-                    qrWrapper.classList.add('has-qr');
-                    downloadBtn.style.display = 'inline-flex';
-                    currentText = finalText;
-                    const preview = finalText.length > 40 ? finalText.slice(0, 40) + '…' : finalText;
-                    setInfo(`✅ QR kód vygenerovaný pre: "${preview}"`, false);
+      sel.addEventListener("change", e => selectModel(e.target.value));
+      selectModel(MODELS[0].id);
 
-                    saveColors(colors.dark, colors.light);
+    } catch (err) {
+      $("loading").textContent = "Server nedostupný.";
+      $("status").classList.add("err");
+      $("status").classList.remove("ok");
+      $("status-text").textContent = "Server nedostupný – spustite server.py";
+    }
+  }
 
-                } catch (err) {
-                    setInfo('❌ Nepodarilo sa vygenerovať QR kód. Skontrolujte text.', true);
-                    console.error(err);
-                    clearQR();
-                }
-            }
+  function selectModel(id) {
+    CURRENT = MODELS.find(m => m.id === id);
+    if (!CURRENT) return;
 
-            function downloadQR() {
-                const canvas = qrContainer.querySelector('canvas');
-                if (!canvas) {
-                    setInfo('❌ Najprv vygenerujte QR kód.', true);
-                    return;
-                }
+    $("form-title").textContent = CURRENT.name;
+    $("form-desc").textContent = CURRENT.description || "";
+    renderForm(CURRENT.fields);
+    renderInfo(CURRENT);
 
-                try {
-                    const link = document.createElement('a');
-                    link.download = 'qr_kod.png';
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                    setInfo('📥 QR kód bol stiahnutý ako PNG.', false);
-                } catch (err) {
-                    setInfo('❌ Chyba pri sťahovaní obrázka.', true);
-                    console.error(err);
-                }
-            }
+    $("result-card").classList.remove("visible");
+    $("error-box").classList.remove("visible");
+  }
 
-            generateBtn.addEventListener('click', function() {
-                generateQR();
-            });
+  function renderForm(fields) {
+    const grid = $("form-grid");
+    grid.innerHTML = "";
 
-            clearBtn.addEventListener('click', function() {
-                textInput.value = '';
-                clearQR();
-                setInfo('', false);
-            });
+    fields.forEach(f => {
+      const div = document.createElement("div");
+      div.className = "field";
 
-            downloadBtn.addEventListener('click', downloadQR);
+      const lbl = document.createElement("label");
+      lbl.htmlFor = f.name;
+      lbl.textContent = f.label || f.name;
+      div.appendChild(lbl);
 
-            darkColorInput.addEventListener('input', function() {
-                if (currentText) {
-                    generateQR(currentText);
-                }
-            });
-            lightColorInput.addEventListener('input', function() {
-                if (currentText) {
-                    generateQR(currentText);
-                }
-            });
+      let input;
+      if (f.type === "categorical") {
+        input = document.createElement("select");
+        (f.options || []).forEach(opt => {
+          const o = document.createElement("option");
+          o.value = opt;
+          o.textContent = (f.option_labels && f.option_labels[opt]) || opt;
+          if (String(f.default) === String(opt)) o.selected = true;
+          input.appendChild(o);
+        });
+      } else if (f.type === "number") {
+        input = document.createElement("input");
+        input.type = "number";
+        input.step = f.step ?? "any";
+        input.value = f.default ?? 0;
+      } else {
+        input = document.createElement("input");
+        input.type = "text";
+        input.value = f.default ?? "";
+      }
+      input.id = f.name;
+      input.name = f.name;
 
-            resetColorsBtn.addEventListener('click', setDefaultColors);
+      div.appendChild(input);
+      grid.appendChild(div);
+    });
 
-            textInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    generateQR();
-                }
-            });
+    if (fields.length % 2 === 1 && grid.lastChild) {
+      grid.lastChild.style.gridColumn = "1 / -1";
+    }
+  }
 
-            textInput.addEventListener('blur', function() {
-                if (textInput.value.trim() === '') {
-                    setInfo('', false);
-                }
-            });
+  function renderInfo(model) {
+    const ul = $("info-list");
+    ul.innerHTML = "";
+    const rows = [
+      ["Typ modelu", model.kind],
+      ...Object.entries(model.metrics || {}),
+    ];
+    rows.forEach(([k, v]) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${k}</span><span>${v}</span>`;
+      ul.appendChild(li);
+    });
+    $("info-note").textContent = model.metrics_note || "";
+  }
 
-            loadColors();
+  $("reset-btn").addEventListener("click", () => {
+    if (CURRENT) renderForm(CURRENT.fields);
+    $("result-card").classList.remove("visible");
+    $("error-box").classList.remove("visible");
+  });
 
-            (function initFromURL() {
-                const params = new URLSearchParams(window.location.search);
-                const textParam = params.get('text');
-                if (textParam) {
-                    textInput.value = textParam;
-                    generateQR(textParam);
-                }
-            })();
+  $("predict-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!CURRENT) return;
 
-        })();
-    </script>
+    $("error-box").classList.remove("visible");
+    $("submit-btn").disabled = true;
+    $("submit-btn").textContent = "Počítam…";
 
+    try {
+      const payload = {};
+      CURRENT.fields.forEach(f => {
+        const el = document.getElementById(f.name);
+        payload[f.name] = el ? el.value : "";
+      });
+
+      const res = await fetch(`${API}/api/predict/${CURRENT.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+      showResult(data);
+
+    } catch (err) {
+      $("error-box").textContent = "Chyba: " + err.message;
+      $("error-box").classList.add("visible");
+    } finally {
+      $("submit-btn").disabled = false;
+      $("submit-btn").textContent = "Vypočítať predikciu";
+    }
+  });
+
+  function showResult(data) {
+    const badge = $("result-badge");
+    badge.textContent = data.result;
+
+    let cls = "neutral";
+    if (data.task === "classification") {
+      cls = data.is_positive ? "positive" : "negative";
+    }
+    badge.className = "result-badge " + cls;
+
+    const pct = (data.confidence * 100).toFixed(2);
+    $("confidence-text").textContent = pct + " %";
+    $("confidence-bar").style.width = pct + "%";
+
+    const list = $("prob-list");
+    list.innerHTML = "";
+    (data.probabilities || []).forEach(p => {
+      const li = document.createElement("li");
+      li.innerHTML =
+        `<span>${p.label}</span><span>${(p.probability * 100).toFixed(2)} %</span>`;
+      list.appendChild(li);
+    });
+
+    $("result-card").classList.add("visible");
+    $("result-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  loadModels();
+})();
+</script>
 </body>
 </html>

@@ -472,7 +472,10 @@ def debug(model_id):
 # ============================================================
 #  7) ŠTART
 # ============================================================
+# Zavolá sa VŽDY — aj pod gunicornom, aj lokálne
+init_registry()
+
+
 if __name__ == "__main__":
-    init_registry()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
